@@ -1,6 +1,18 @@
 import numpy as np
 
 def auc_roc(X,Y, ncrit):
+    """
+    Returns the Area-Under-the-ROC-Curve 
+    and the sensitivity (true  positive rate; X,Y>0)
+    and specificity (1 - false positive rate; X,Y==0)
+    for a range of criteria based on quantile thresholding
+    -------------------------------------------------------------------------
+    INPUTs:
+    -X:      ground truth
+    -Y:      estimated connectivity matrix (e.g., PDC)
+    -ncrit:  number of criteria used (spacing from 0-1)
+    """
+
     if (not np.isnan(Y[0]).any()) and (len(Y.shape) >2):
         dg = Y.shape[0]
         for ij in range(dg):
