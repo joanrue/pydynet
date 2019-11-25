@@ -8,6 +8,31 @@ from matplotlib import cm
 from pydynet.dynet_statespace import Dynet_SSM
 
 class DynetSim(Dynet_SSM): 
+    """
+     Simulation class for tv-MVAR generated surrogate time series
+    --------------------------------------------------------------------------
+     INPUTs:
+     - n:       number of nodes           - srate:     sampling frequency
+     - duration:trial lenght in s         - order:  model order
+     - sparsity:proportion                - nstates:number of states
+     - ntrials: number of realizations    - snr_db: signal-to-noise ratio db
+     - lmix:    linear mixing in mm 
+    --------------------------------------------------------------------------
+     OUTPUT dyna, structure with fields:
+     - n:       number of nodes             - srate:  sampling frequency Fs
+     - delay:   model order                 - popt:   optimal model order
+     - time:    time vector                 - frange: frequency vector
+     - sparsity:matrix sparsity             - nstates:number of states
+     - trials:  number of realizations      - SC:     structural adjacency matrix
+     - FC:      functional adjacency matrix - AR:     MVAR model coefficients
+     - R:       Innovation covariance       - Y:      Simulated sample data
+     - E:       Innovation matrix           - CT:     Between-trials correlation
+     - scaling: Scale factor of off-diag AR - regimes:Stable matrices
+     - DM,LMx:  Distance matrix             - summary:Table of connections
+     - noise:   Additive mesurement noise
+    --------------------------------------------------------------------------
+    """
+
     def __init__(self, n = 5, srate = 200, duration = 2, order = 5, sparsity = .5, nstates = 3, ntrials = 200, snr_db = None, lmix = 0):        
         super().__init__()
         # Variables
@@ -186,6 +211,14 @@ class DynetSim(Dynet_SSM):
         self.Y += self.noise
     
     def review(self):
+        """ 
+         Plot figure displaying: 
+         suplot(221) structural adjacency matrix
+         suplot(222) functional adjacency matrix
+         subplot(223) surrogate time-series in the time domain
+         subplot(224) power spectral density of surrogate time-series            
+        """
+
         if not self.simulated:
             raise Exception(" First need to simulate --> use .simulate()")
         else:
