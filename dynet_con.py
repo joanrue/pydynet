@@ -1,7 +1,59 @@
+
 import numpy as np
 import matplotlib.pyplot as plt
 
-def dynet_ar2pdc(KF,srate,freqs,measure = 'sPDC',univ = 0,flow = 1,PSD = 0):
+def dynet_ar2pdc(KF,srate,freqs,metric = 'sPDC',univ = 0,flow = 1,PSD = 0):
+    """
+     Obtain PDC, sPDC, info-PDC from tvAR coeffients
+                                              M.Rubega, D.Pascucci, 17.10.2018
+     Last update: 22.10.2019
+    --------------------------------------------------------------------------
+     INPUTs
+     - KF:        Dynet_SSM object (dynet_statespace.Dynet_SSM())
+                  containing the 4d array of AR coefficients
+                  [n x n x order x time]
+                  and the estimated measurement noise covariance matrix R
+                  [n x n x time]
+     - srate:     Sampling rate
+     - freqs:     Frequency 1d array
+     - metric:    see OUTPUT
+     - univ:      Remove (0, default) or Keep (1) the diagonal elements
+     - flow:      normalization per columns (1) or rows (2)
+     - PSD:       (1) Add the normalized parametric PSD on diagonals
+                  (0) none (only for graphical purpose)
+    --------------------------------------------------------------------------
+     OUTPUTs
+     - PDC:       4d array: [Nodes X Nodes X Freq X Time]
+                  one of
+                 'PDC'     % non-squared       Eq. (18) in [2]
+                 'sPDC'    % squared           Eq. (7) in [3]
+                 'PDCnn'   % non-normalized
+                 'sPDCnn'  % squared non-normalized
+                 'iPDC'    % info-PDC          Eq. (5.25) in [4]
+                 'iPDCs'   % info-PDC squared
+    --------------------------------------------------------------------------
+
+    References:
+     [1] Milde, T., Leistritz, L., ..., & Witte, H. (2010), Neuroimage, 50(3),
+         960-969. A new Kalman filter approach for the estimation of
+         high-dimensional time-variant multivariate AR models and its
+         application in analysis of laser-evoked brain potentials.
+     [2] Baccal�, L. & Sameshima, K. (2001) Biol Cybern, 84 (6), 463�474
+         Partial directed coherence: a new concept in neural structure
+         determination.
+     [3] Astolfi, L., ..., & Babiloni, F. (2006), IEEE Transactions on
+         Biomedical Engineering, 53(9), 1802-1812
+         Assessing cortical functional connectivity by partial directed
+         coherence: simulations and application to real data.
+     [4] K. Sameshima and L. A. Baccala, (2014), CRC Press
+         Methods in brain connectivity inference through multivariate time
+         series analysis.
+     [5] Toppi, J., ..., & Astolfi, L. (2013), 35th Annual International
+         Conference of the IEEE EMBS, 4346-4349
+         The Effect of Normalization of Partial Directed Coherence on the
+         Statistical Assessment of Connectivity Patterns: A Simulation Study    
+    """
+    
     if flow not in [1,2]:
         raise Exception('Check the value of "flow" flow must be a value in either 1 or 2')
         
@@ -20,26 +72,26 @@ def dynet_ar2pdc(KF,srate,freqs,measure = 'sPDC',univ = 0,flow = 1,PSD = 0):
         tmp  = np.transpose(np.tile(-KF.AR[:, :, k,:], (len(freqs),1,1,1)),(1,2,0,3))
         A    += np.multiply(tmp,Z[:,k].reshape(1,1,-1,1))
         
-    if measure == 'PDC': # Eq. (18) in [2]    
+    if metric == 'PDC': # Eq. (18) in [2]    
         if flow==1: 
             PDC = np.divide(abs(A),np.sqrt(np.sum(abs(A)**2,axis = flow-1 )).reshape(1,A.shape[1],A.shape[2],A.shape[3]))
         if flow==2: 
             PDC = np.divide(abs(A),np.sqrt(np.sum(abs(A)**2,axis = flow-1 )).reshape(A.shape[0],1,A.shape[2],A.shape[3]))
 
-    elif measure == 'sPDC': #  Eq.  (7) in [3]
+    elif metric == 'sPDC': #  Eq.  (7) in [3]
         if flow==1: 
             PDC = np.divide(abs(A)**2,np.sum(abs(A)**2,axis = flow-1 ).reshape(1,A.shape[1],A.shape[2],A.shape[3]))
         if flow==2: 
             PDC = np.divide(abs(A)**2,np.sum(abs(A)**2,axis = flow-1 ).reshape(A.shape[0],1,A.shape[2],A.shape[3]))
 
-    elif measure == 'PDCnn': 
+    elif metric == 'PDCnn': 
         PDC = abs(A)
 
-    elif measure == 'sPDCnn': 
+    elif metric == 'sPDCnn': 
         PDC = abs(A)**2
 
 
-    elif measure == 'iPDC': #  Eq.  (5.25) in [4] -> if R is diagonal, "generalized PDC
+    elif metric == 'iPDC': #  Eq.  (5.25) in [4] -> if R is diagonal, "generalized PDC
         #    For construction, R should be constant over time:
         R = np.mean(KF.R[:,:,np.max([round(KF.R.shape[2]/2),order]):KF.R.shape[2]],axis=2)
         SIGMA = np.linalg.pinv(R)
@@ -51,7 +103,7 @@ def dynet_ar2pdc(KF,srate,freqs,measure = 'sPDC',univ = 0,flow = 1,PSD = 0):
         den = np.tile(den2,[A.shape[0],1,1,1])
         PDC = abs(A) / np.sqrt(w_ii * den)
 
-    elif measure == 'iPDCs': #  Eq.  (5.25) in [4] -> if R is diagonal, "generalized PDC
+    elif metric == 'iPDCs': #  Eq.  (5.25) in [4] -> if R is diagonal, "generalized PDC
         #    For construction, R should be constant over time:
         R = np.mean(KF.R[:,:,np.max([round(KF.R.shape[2]/2),order]):KF.R.shape[2]],axis=2)
         SIGMA = np.linalg.pinv(R)
@@ -86,6 +138,28 @@ def dynet_ar2pdc(KF,srate,freqs,measure = 'sPDC',univ = 0,flow = 1,PSD = 0):
     return PDC
           
 def dynet_parpdc(KF,srate,f_range,SSout=2,t_win=None):
+    """
+     Get A(f) and SS(optional) from AR coefficients
+     adds frequency-related info on the Kalman filter estimates     
+    --------------------------------------------------------------------------
+     INPUTs
+     - KF:         Dynet_SSM object (dynet_statespace.Dynet_SSM())
+     - srate:      Sampling rate
+     - f_range:    Frequency range for A(f) and SS computation, 1d array
+                   - linear spacing if len(np.shape(f_range))==2
+                   - user-specified spacing if len(np.shape(f_range))>2
+     - SSout:      (0) A(f),  (1) A (f ) and SS, (2) SS
+     - t_win:      Temporal window (in samples) to restrict A(f) and SS
+    --------------------------------------------------------------------------
+     OUTPUTs (additional fields in KF)
+     - AF:         A(f) matrix
+                   4d array: [Channels X Channels X Freq X Time]
+     - SS:         Spectral-Autospectral matrix (optional)
+                   4d arrray: [Channels X Channels X Freq X Time]
+     - AuS:        Autospectral matrix (optional)
+                   3d array: [Channels X Freq X Time]
+    """
+
         # Check R
     nodes,_,order,time = KF.AR.shape
     if (KF.R is not None) and (len(KF.R.shape)<3):
@@ -122,10 +196,27 @@ def dynet_parpdc(KF,srate,f_range,SSout=2,t_win=None):
                 KF.AuS[k,:,:] = SS[k,k,:,:]
 
 def dynet_connplot(ConnMatrix,time,freq,labels=None,quantrange=[0.01, 0.99],cmap = 'jet',SC = None,univ = 0):
-    
+    """
+     Figure displaying connectivity matrices (function of time and frequency) 
+     for each combination of signals
+    --------------------------------------------------------------------------
+     INPUTs
+     - ConnMatrix:       4d array: [Nodes X Nodes X Freq X Time] 
+     - time:             Time vector, 1d array: [1 X Time]
+     - freq:             Frequencies vector, 1d array: [1 X Freq]
+     - labels:           Nodes' labels np.arange(len(nodes)), by default) 
+     - quantrange:       ([.01 .99], by default)
+     - cmap:             Colormap colors (jet, by default)
+     - SC:               No structural matrix info (0, by default), otherwise
+                         structural matrix, 2d array [Nodes X Nodes]
+     - univ:             Remove (0, by default) diagonal plots otherwise keep (1)
+    --------------------------------------------------------------------------
+    """
+    # - define labels for each node
     if labels is None:
         labels=['n{}'.format(i+1) for i in range(ConnMatrix.shape[0])]
     
+    # - define range of values to display
     dim = ConnMatrix.shape
     if (len(quantrange)>1) and (quantrange[0]>=0):
         maxscale = np.nanquantile(ConnMatrix,quantrange[1])
@@ -145,7 +236,8 @@ def dynet_connplot(ConnMatrix,time,freq,labels=None,quantrange=[0.01, 0.99],cmap
     df = (freq[1]-freq[0])/2.
     extent = [time[0]-dt, time[-1]+dt, freq[0]-df, freq[-1]+df]
     
-
+    # - plot figure
+    
     fig, axs = plt.subplots(nrows = dim[0], ncols = dim[1], sharex=True, sharey= True, figsize = (2*dim[1],2*dim[0]))
     for i1 in range(dim[0]):
         for i2 in range(dim[1]):    
@@ -201,8 +293,6 @@ def dynet_connplot(ConnMatrix,time,freq,labels=None,quantrange=[0.01, 0.99],cmap
             if SC is not None:
                 if (SC[i1,i2] == 1) and (i1!=i2):
                     [axs[i1,i2].spines[i].set_color('r') for i in axs[i1,i2].spines]
-
-    #fig.subplots_adjust(bottom=0.1, top=0.9, left=0.1, right=0.8, wspace=0.02, hspace=0.02)
 
     fig.tight_layout()
     bbox_ax = axs[dim[0]-1,dim[1]-1].get_position()
