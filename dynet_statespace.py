@@ -10,6 +10,44 @@ class Dynet_SSM(object):
         self.c = c
         
 def dynet_SSM_KF(Y, p, uc):
+    
+    """ Kalman filter for state-space modeling of physiological time series
+    --------------------------------------------------------------------------
+     INPUTs:
+     -Y:       3d array: [Trials X Channels X Time]
+               Sample data
+               Classical for Trials = 1; General for Trials > 1 [1]
+     -p:       positive scalar 
+               p-order
+     -uc:      update Constants 0<=c<=1
+               [c C], C=c if len(uc)==1
+    --------------------------------------------------------------------------
+     OUTPUT:   KF, structure with fields:
+     -AR:      4d array: [Channels X Channels X p X Time]
+               MVAR model coefficients
+     -R:       3d array: [Channels X Channels X Time]
+               Measurement Noise Covariance Matrix (W in [1])
+               
+     -PY:      3d array: [Trials X Channels X Time]               
+               One-step Predictions on Y
+     -PYe:     3d array: [Trials X Channels X Time]            
+               One-step Residuals
+     -c:      self-tuning c for each k
+    ==========================================================================
+     References:
+    
+     [1] Milde, T., Leistritz, L., ..., & Witte, H. (2010).
+         A new Kalman filter approach for the estimation of high-dimensional
+         time-variant multivariate AR models and its application in analysis
+         of laser-evoked brain potentials. Neuroimage, 50(3), 960-969.
+     [2] Gelb, A. (Ed.). (1974). Applied optimal estimation. MIT press.
+    
+    --------------------------------------------------------------------------
+     Notes: all equations are based on [1], but using the standard variable
+     naming in Kalman filters [2]
+    """
+
+    # -check input
     if len(np.shape(Y)) < 3:
         raise Exception('Check the dimensions of Y. Y should be in the format [trials, channels, time]')
 
@@ -70,6 +108,37 @@ def dynet_SSM_KF(Y, p, uc):
     return KF
 
 def dynet_SSM_STOK(Y,p,ff):
+    """
+     The Self-Tuning optimized Kalman filter
+    --------------------------------------------------------------------------
+     INPUTs:
+     -Y:       3d array: [Trials X Channels X Time]
+               Sample data
+               Classical for Trials = 1; General for Trials > 1 [1]
+     -p:       positive scalar 
+               p-order
+     -ff:     percentage of variance explained for setting the filter factor
+               Regularization parameter, default 0.99
+    --------------------------------------------------------------------------
+     OUTPUT:   STOK, structure with fields:
+     -AR:      4d array: [Channels X Channels X p X Time]
+               MVAR model coefficients
+     -R:       3d array: [Channels X Channels X Time]
+               Measurement Noise Covariance Matrix (innovation based)
+               
+     -PY:      3d array: [Trials X Channels X Time]               
+               One-step Predictions on Y
+     -c:      self-tuning c for each k
+     -FFthr   filtering factor threshold for each k [2]
+    ==========================================================================
+     References:
+     [1] Nilsson, M. (2006). Kalman filtering with unknown noise covariances.
+         In Reglerm�te 2006.
+     [2] Hansen, P. C. (1987). The truncated svd as a method for 
+         regularization. BIT Numerical Mathematics, 27(4), 534-553.
+"""
+    # -check input
+    
     if len(np.shape(Y)) < 3:
         raise Exception('Check the dimensions of Y. Y should be in the format [trials, channels, time]')
 
