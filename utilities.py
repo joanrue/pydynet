@@ -28,6 +28,6 @@ def auc_roc(X,Y, ncrit):
     for k in range(ncrit):
         sens[k] = np.mean(Y[X>0]>=thre[k])
         spec[k] = np.mean(Y[X==0]<thre[k])
-    auc = abs(np.trapz(1-spec,sens))    
+    auc = abs(np.trapz(sens,1-spec))    
     return spec,sens,auc
 
