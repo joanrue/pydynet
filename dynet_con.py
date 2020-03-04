@@ -146,8 +146,8 @@ def dynet_parpdc(KF,srate,f_range,SSout=2,t_win=None):
      - KF:         Dynet_SSM object (dynet_statespace.Dynet_SSM())
      - srate:      Sampling rate
      - f_range:    Frequency range for A(f) and SS computation, 1d array
-                   - linear spacing if len(np.shape(f_range))==2
-                   - user-specified spacing if len(np.shape(f_range))>2
+                   - linear spacing if len(f_range)==2
+                   - user-specified spacing if len(f_range)>2
      - SSout:      (0) A(f),  (1) A (f ) and SS, (2) SS
      - t_win:      Temporal window (in samples) to restrict A(f) and SS
     --------------------------------------------------------------------------
@@ -232,9 +232,11 @@ def dynet_connplot(ConnMatrix,time,freq,labels=None,quantrange=[0.01, 0.99],cmap
         minscale = 0
         maxscale = quantrange
     
+    time = time * 1000
     dt = (time[1]-time[0])/2.
     df = (freq[1]-freq[0])/2.
     extent = [time[0]-dt, time[-1]+dt, freq[0]-df, freq[-1]+df]
+    
     
     # - plot figure
     
@@ -243,55 +245,64 @@ def dynet_connplot(ConnMatrix,time,freq,labels=None,quantrange=[0.01, 0.99],cmap
         for i2 in range(dim[1]):    
             if univ == 0:
                 if i1!=i2:
-                    im = axs[i1,i2].imshow(ConnMatrix[i1,i2,:,:], extent = extent, aspect='auto', cmap = cmap, vmin = minscale, vmax = maxscale)
+                    im = axs[i1,i2].pcolormesh(time,np.arange(ConnMatrix.shape[2]),ConnMatrix[i1,i2,:,:], cmap = cmap, vmin = minscale, vmax = maxscale)
                     axs[i1,i2].axvline(x = 0, linewidth=4, color='w')
-                    axs[i1,i2].invert_yaxis()
+                    axs[i1,i2].set_ylim([extent[2],extent[3]])
+                    
             else:
                 if np.sum(ConnMatrix[i1,i2,:,:]) is not np.nan:
-                    im = axs[i1,i2].imshow(ConnMatrix[i1,i2,:,:], extent = extent, aspect='auto', cmap = cmap, vmin = minscale, vmax = maxscale)
-                    axs[i1,i2].axvline(x = 0, linewidth=4, color='r')
-                    axs[i1,i2].invert_yaxis()
+                    im = axs[i1,i2].pcolormesh(time,np.arange(ConnMatrix.shape[2]),ConnMatrix[i1,i2,:,:], cmap = cmap, vmin = minscale, vmax = maxscale)
+                    axs[i1,i2].axvline(x = 0, linewidth=4, color='w')
+                    axs[i1,i2].set_ylim([extent[2],extent[3]])
+                   
+                    
 
-            if (i1 == dim[0]-1) and (i2==dim[1]-1):
+            if ((i1 == dim[0]-1) & (i2==dim[1]-1)):
                 pass#axs[i2,i1].set_axis_off()  
 
-            if (i1 != 0) and (i2 == 0):
+            if ((i1 != 0) & (i2 == 0)):
                 axs[i1,i2].set_ylabel(labels[i1],rotation=45,fontsize=20)              
 
-            if i1 ==0:
+            if (i1 == 0):
                 axs[i1,i2].set_xlabel(labels[i2],rotation=45,fontsize=20)
                 axs[i1,i2].xaxis.set_label_position('top')
-
-            if (i2 == i1) and (univ==0):
+                
+            if ((i2 == i1) & (univ==0)):
                 axs[i1,i2].set_axis_off()      
 
-            if (i1 == 0) and (i2 == dim[1]-1):
+            if ((i1 == 0) & (i2 == dim[1]-1)):
                 axs[i1,i2].set_ylabel(labels[0],rotation=45, fontsize=20)
                 axs[i1,i2].yaxis.set_label_position('right')
 
-            if (i1 == dim[0]-1) and (i2 == 0) and (univ==0):
+            if ((i1 == dim[0]-1) & ((i2 == 0) & (univ==0))):
                 axs[i1,i2].xaxis.set_label_position('bottom')
 
-            if (i1 == dim[0]-2) and (i2 == dim[1]-1) and (univ==0):
-                axs[i1,i2].set_xlabel('time (s)', fontsize=17)
+            if ((i1 == dim[0]-2) & ((i2 == dim[1]-1) & (univ==0))):
+                axs[i1,i2].set_xlabel('time (ms)', fontsize=17)
                 axs[i1,i2].set_ylabel('f (Hz)', fontsize=17)
                 axs[i1,i2].grid(linestyle='-', linewidth='0.5', color='k')
-            else:
-                axs[i1,i2].set(xticks=[],yticks=[])
+           
 
-            if univ and (i1+i2==0):
+            if (univ & (i1+i2==0)):
                 axs[i1,i2].set_ylabel('f (Hz)', fontsize=17)
                 axs[i1,i2].grid(linestyle='-', linewidth='0.5', color='k')
                 axs[i1,i2].set(xticks=[])
-
-            if univ and (i1==dim[0]-1) and (i2 ==dim[1]-1):
-                axs[i1,i2].set_xlabel('time (s)', fontsize=17)
+                #axs[i1,i2].set(yticks=np.linspace(1,len(freq)-1,3),yticklabels=np.linspace(extent[2]+df,extent[3]-df,3))
+                #for tick in axs[i1,i2].yaxis.get_major_ticks():
+                #    tick.label.set_fontsize(17) 
+            
+            elif (univ & ((i1==dim[0]-1) & (i2 ==dim[1]-1))):
+                axs[i1,i2].set_xlabel('time (ms)', fontsize=17)
                 axs[i1,i2].grid(linestyle='-', linewidth='0.5', color='k')
                 axs[i1,i2].set(yticks=[])
-
+                #axs[i1,i2].set(xticks=np.linspace(1,len(time)-1,5),xticklabels=np.linspace(extent[0]+dt,extent[1]-dt,5))
+                #for tick in axs[i1,i2].xaxis.get_major_ticks():
+                #    tick.label.set_fontsize(17) 
+            else: 
+                axs[i1,i2].set(xticks=[],yticks=[])                  
             [axs[i1,i2].spines[i].set_linewidth(4) for i in axs[i1,i2].spines]
             if SC is not None:
-                if (SC[i1,i2] == 1) and (i1!=i2):
+                if (SC[i1,i2] == 1) & (i1!=i2):
                     [axs[i1,i2].spines[i].set_color('r') for i in axs[i1,i2].spines]
 
     fig.tight_layout()
