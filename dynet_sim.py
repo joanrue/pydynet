@@ -136,9 +136,15 @@ class DynetSim(Dynet_SSM):
         self.X = np.zeros((self.ntrials,self.n,nsamples+nuisance))
         ARplus = np.concatenate((self.AR[:,:,:,:nuisance],self.AR),3)
         # simulate between-trials correlation (correlated generative noise)
-        CTeigvals = np.random.rand(self.ntrials)
-        CTeigvals = CTeigvals/np.sum(CTeigvals)*self.ntrials
-        CT = abs(random_correlation.rvs(CTeigvals))*3 
+        while True:
+            try:
+                CTeigvals = np.random.rand(self.ntrials)
+                CTeigvals = CTeigvals/np.sum(CTeigvals)*self.ntrials
+                CT = abs(random_correlation.rvs(CTeigvals))*3 
+                break
+            except:
+                pass
+            
         self.CT = CT.clip(max=1)
         dgI = np.random.choice(np.where(np.eye(self.ntrials).reshape(-1)==0)[0],int((self.ntrials**2-self.ntrials)*.1),replace=False)
         NegCT = np.ones(self.ntrials*self.ntrials)
