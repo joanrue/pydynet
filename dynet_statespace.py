@@ -178,7 +178,12 @@ def dynet_SSM_STOK(Y,p,ff):
 
         # determine filtering factor threshold [2]
         relv         = s**2 / sum(s**2)
-        filtfact     = np.where(np.cumsum(relv) < ff)[0][-1]    
+        filtfact     = np.where(np.cumsum(relv) < ff)[0]
+        if len(filtfact)>0:
+            filtfact = filtfact[-1]
+        else:
+            filtfact = 0
+            
         lambda_k     = s[filtfact]**2
         FFthr[k]     = filtfact
         D = np.diag(s / (s**2 + lambda_k))
