@@ -176,20 +176,25 @@ def dynet_SSM_STOK(Y,p,ff):
         u,s,vh       = np.linalg.svd(H,full_matrices=False)
         # only the first "dim" columns of U are computed, and S is [dim,]
 
-        # determine filtering factor threshold [2]
-        relv         = s**2 / sum(s**2)
-        filtfact     = np.where(np.cumsum(relv) < ff)[0]
-        if len(filtfact)>0:
-            filtfact = filtfact[-1]
+        if ff is not None:
+            # determine filtering factor threshold [2]
+            relv         = s**2 / sum(s**2)
+            filtfact     = np.where(np.cumsum(relv) < ff)[0]
+            if len(filtfact)>0:
+                filtfact = filtfact[-1]
+            else:
+                filtfact = 0
+
+            lambda_k     = s[filtfact]**2
+            FFthr[k]     = filtfact
+            D = np.diag(s / (s**2 + lambda_k))
         else:
-            filtfact = 0
+            FFthr[k]     = np.nan
+            D = np.diag(1 / (s))
             
-        lambda_k     = s[filtfact]**2
-        FFthr[k]     = filtfact
-        D = np.diag(s / (s**2 + lambda_k))
         Hinv         = vh.T @ D @ u.T
         betas        = Hinv @ Z
-
+        
         # self-tuning adaptation constant
         if k > (p+1)**2: # 0.05 <= c <= 0.95
             ntrEk    = trEk[k-1:k-p*2:-1]
