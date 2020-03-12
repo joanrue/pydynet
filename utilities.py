@@ -25,9 +25,11 @@ def auc_roc(X,Y, ncrit):
     spec = np.zeros(ncrit)
     thre = np.quantile(Y,qrange)
 
+    ids_great = X>0
+    ids_eq = X==0
     for k in range(ncrit):
-        sens[k] = np.mean(Y[X>0]>=thre[k])
-        spec[k] = np.mean(Y[X==0]<thre[k])
+        sens[k] = np.nanmean(Y[ids_great]>=thre[k])
+        spec[k] = np.nanmean(Y[ids_eq]<thre[k])
     auc = abs(np.trapz(sens,1-spec))    
     return spec,sens,auc
 
