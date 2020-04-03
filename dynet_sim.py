@@ -49,22 +49,27 @@ class DynetSim(Dynet_SSM):
         self.popt = order + 1
         self.frange = np.arange(1,np.floor(srate/2)+1)
         self.simulated = False
+        self.SC = None
+        self.DM = None
     def simulate(self):
         self.simulated = True
         # Constants
-        SClinks = 0.8         # Markov et al. 2012
         ascale = np.arange(0.1,0.51,0.01)
         dt = 1 / self.srate                
         nsamples = len(self.time)
         min_state = np.argmin(np.abs(self.time-0.15))+1  # Minimum duration in frames
         
-        
         # - strurctural links (binary mask)
         I = np.eye(self.n)
-        UT = np.triu(np.random.choice([0,1],self.n**2,replace=True,p=[1-SClinks,SClinks]).reshape(self.n,self.n))
-        MK = UT + UT.T - np.diag(np.diag(UT + UT.T))
-        self.SC = MK + I
-
+        if self.SC is None:
+            SClinks = 0.8         # Markov et al. 2012       
+            UT = np.triu(np.random.choice([0,1],self.n**2,replace=True,p=[1-SClinks,SClinks]).reshape(self.n,self.n))
+            MK = UT + UT.T - np.diag(np.diag(UT + UT.T))
+            self.SC = MK + I
+        else: 
+            MK = np.copy(self.SC)
+            MK[np.diag_indices(self.n)] = 0
+            
         # - directed interactions (binary mask)
         FC = np.zeros(self.SC.shape) # HERE USE SC.shape instead of MK.shape
         MKconnections = np.array(np.where(MK))
@@ -181,11 +186,17 @@ class DynetSim(Dynet_SSM):
             
         # - Linear mixing
         if self.lmix > 0: 
-            x = np.random.choice(np.arange(1,151),self.n,replace=False) # 2d lattice 15x15cm 
-            y = np.random.choice(np.arange(1,151),self.n,replace=False)
-            mixf = norm.pdf(np.arange(0,151),0,self.lmix)
-            xy = np.concatenate(([x], [y]),axis=0)
-            self.DM = squareform(pdist(xy.T))
+            if self.DM is None:
+                x = np.random.choice(np.arange(1,151),self.n,replace=False) # 2d lattice 15x15cm 
+                y = np.random.choice(np.arange(1,151),self.n,replace=False)
+                mixf = norm.pdf(np.arange(0,151),0,self.lmix)
+                xy = np.concatenate(([x], [y]),axis=0)
+                self.DM = squareform(pdist(xy.T))
+            
+            else: 
+                mixf = norm.pdf(np.arange(0,np.max(self.DM)),0,self.lmix)  
+                
+                
             self.LMx = norm.pdf(self.DM,0,self.lmix) / np.max(mixf)
             self.Y = np.matmul(np.tile(self.LMx,[self.ntrials,1,1]),self.Y)
         else: 
