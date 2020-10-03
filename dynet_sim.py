@@ -183,7 +183,8 @@ class DynetSim(Dynet_SSM):
             self.addnoise('w')
         else: 
             self.noise = 0
-            
+        
+        self.Y_pre_lm = np.copy(self.Y)
         # - Linear mixing
         if self.lmix > 0: 
             if self.DM is None:
@@ -197,7 +198,7 @@ class DynetSim(Dynet_SSM):
                 mixf = norm.pdf(np.arange(0,np.max(self.DM)),0,self.lmix)  
                 
                 
-            self.LMx = norm.pdf(self.DM,0,self.lmix) / np.max(mixf)
+            self.LMx = norm.pdf(self.DM,0,self.lmix) / np.max(mixf)            
             self.Y = np.matmul(np.tile(self.LMx,[self.ntrials,1,1]),self.Y)
         else: 
             self.DM =  np.ones((self.n,self.n))*np.nan
