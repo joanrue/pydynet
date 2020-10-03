@@ -6,7 +6,7 @@ def dynet_ar2pdc(KF,srate,freqs,metric = 'sPDC',univ = 0,flow = 1,PSD = 0):
     """
      Obtain PDC, sPDC, info-PDC from tvAR coeffients
                                               M.Rubega, D.Pascucci, 17.10.2018
-     Last update: 22.10.2019
+     Last update: 02.10.2020
     --------------------------------------------------------------------------
      INPUTs
      - KF:        Dynet_SSM object (dynet_statespace.Dynet_SSM())
@@ -98,7 +98,7 @@ def dynet_ar2pdc(KF,srate,freqs,metric = 'sPDC',univ = 0,flow = 1,PSD = 0):
         w_ii = np.tile(np.diag(R),[nodes, len(freqs),time,1]).transpose([3,0,1,2])
         den2 = np.zeros((nodes,len(freqs),time),dtype = complex)
         for j in range(nodes):
-            den1 = np.sum(np.tile(A[:,j,:,:],[10,1,1,1]).transpose([1,0,2,3]) * np.tile(SIGMA,[A.shape[2],A.shape[3],1,1]).transpose([2,3,0,1]),axis=0)
+            den1 = np.sum(np.tile(A[:,j,:,:],[nodes,1,1,1]).transpose([1,0,2,3]) * np.tile(SIGMA,[A.shape[2],A.shape[3],1,1]).transpose([2,3,0,1]),axis=0)
             den2[j] = np.sum(den1 * np.conjugate(A[:,j,:,:]),axis=0)
         den = np.tile(den2,[A.shape[0],1,1,1])
         PDC = abs(A) / np.sqrt(w_ii * den)
@@ -110,7 +110,7 @@ def dynet_ar2pdc(KF,srate,freqs,metric = 'sPDC',univ = 0,flow = 1,PSD = 0):
         w_ii = np.tile(np.diag(R),[nodes, len(freqs),time,1]).transpose([3,0,1,2])
         den2 = np.zeros((nodes,len(freqs),time),dtype = complex)
         for j in range(nodes):
-            den1 = np.sum(np.tile(A[:,j,:,:],[10,1,1,1]).transpose([1,0,2,3]) * np.tile(SIGMA,[A.shape[2],A.shape[3],1,1]).transpose([2,3,0,1]),axis=0)
+            den1 = np.sum(np.tile(A[:,j,:,:],[nodes,1,1,1]).transpose([1,0,2,3]) * np.tile(SIGMA,[A.shape[2],A.shape[3],1,1]).transpose([2,3,0,1]),axis=0)
             den2[j] = np.sum(den1 * np.conjugate(A[:,j,:,:]),axis=0)
         den = np.tile(den2,[A.shape[0],1,1,1])
         PDC = abs(A)**2 / (w_ii * den)
