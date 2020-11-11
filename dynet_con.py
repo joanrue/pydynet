@@ -245,13 +245,13 @@ def dynet_connplot(ConnMatrix,time,freq,labels=None,quantrange=[0.01, 0.99],cmap
         for i2 in range(dim[1]):    
             if univ == 0:
                 if i1!=i2:
-                    im = axs[i1,i2].pcolormesh(time,np.arange(ConnMatrix.shape[2]),ConnMatrix[i1,i2,:,:], cmap = cmap, vmin = minscale, vmax = maxscale)
+                    im = axs[i1,i2].pcolormesh(time,np.arange(freq[0],freq[-1]+freq[1]-freq[0],freq[1]-freq[0]),ConnMatrix[i1,i2,:,:], cmap = cmap, vmin = minscale, vmax = maxscale)
                     axs[i1,i2].axvline(x = 0, linewidth=4, color='w')
                     axs[i1,i2].set_ylim([extent[2],extent[3]])
                     
             else:
                 if np.sum(ConnMatrix[i1,i2,:,:]) is not np.nan:
-                    im = axs[i1,i2].pcolormesh(time,np.arange(ConnMatrix.shape[2]),ConnMatrix[i1,i2,:,:], cmap = cmap, vmin = minscale, vmax = maxscale)
+                    im = axs[i1,i2].pcolormesh(time,np.arange(freq[0],+freq[1]-freq[0],freq[1]-freq[0]),ConnMatrix[i1,i2,:,:], cmap = cmap, vmin = minscale, vmax = maxscale)
                     axs[i1,i2].axvline(x = 0, linewidth=4, color='w')
                     axs[i1,i2].set_ylim([extent[2],extent[3]])
                    
