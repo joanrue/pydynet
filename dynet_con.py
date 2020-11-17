@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def dynet_ar2pdc(KF,srate,freqs,metric = 'sPDC',univ = 0,flow = 1,PSD = 0):
+def dynet_ar2pdc(KF,srate,freqs,metric = 'sPDC',univ = 0,flow = 1,PSD = 0, gauss_filt=True):
     """
      Obtain PDC, sPDC, info-PDC from tvAR coeffients
                                               M.Rubega, D.Pascucci, 17.10.2018
@@ -72,6 +72,14 @@ def dynet_ar2pdc(KF,srate,freqs,metric = 'sPDC',univ = 0,flow = 1,PSD = 0):
         tmp  = np.transpose(np.tile(-KF.AR[:, :, k,:], (len(freqs),1,1,1)),(1,2,0,3))
         A    += np.multiply(tmp,Z[:,k].reshape(1,1,-1,1))
         
+    # Apply Gaussian smoothing filter in the frequency axis
+    if gauss_filt:
+        window_len = 15    
+        s = np.copy(A)
+        s = np.concatenate((A[:,:,window_len-1:0:-1], A, A[:,:,-2:-window_len-1:-1]),axis=2)
+        w = scipy.signal.windows.gaussian(15,3)    
+        A = np.apply_along_axis(lambda x: np.convolve(w/w.sum(),x,mode='valid')[window_len//2:-window_len//2+1], axis=2, arr=s)
+     
     if metric == 'PDC': # Eq. (18) in [2]    
         if flow==1: 
             PDC = np.divide(abs(A),np.sqrt(np.sum(abs(A)**2,axis = flow-1 )).reshape(1,A.shape[1],A.shape[2],A.shape[3]))
