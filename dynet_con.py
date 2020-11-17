@@ -2,7 +2,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def dynet_ar2pdc(KF,srate,freqs,metric = 'sPDC',univ = 0,flow = 1,PSD = 0, gauss_filt=True):
+def dynet_ar2pdc(KF,srate,freqs,metric = 'sPDC',univ = 0,flow = 1,PSD = 0, gauss_filt=False):
     """
      Obtain PDC, sPDC, info-PDC from tvAR coeffients
                                               M.Rubega, D.Pascucci, 17.10.2018
