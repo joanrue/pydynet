@@ -218,3 +218,140 @@ def dynet_SSM_STOK(Y,p,ff):
     AR           = AR.reshape([dim,dim,p,tm],order='F')
     STOK         = Dynet_SSM(AR = AR, R = R, PY = PY, c=allc, FFthr=FFthr)
     return STOK
+
+
+
+def dynet_SSM_siSTOK(Y,p,C,ff=0.99):
+    """
+     Self-Tuning optimized Kalman filter with priors, 
+     Generalized Tikhonov Regularization
+    --------------------------------------------------------------------------
+     INPUTs:
+     -Y:       3d array: [Trials X Channels X Time]
+               Sample data
+               Classical for Trials = 1; General for Trials > 1 [1]
+     -p:       positive scalar 
+               p-order
+     -C:       weighted/binary SC priors
+     -ff:      percentage of variance explained for setting the filter factor
+               Regularization parameter, default 0.99
+    --------------------------------------------------------------------------
+     OUTPUT:   STOK, structure with fields:
+     -AR:      4d array: [Channels X Channels X p X Time]
+               MVAR model coefficients
+     -R:       3d array: [Channels X Channels X Time]
+               Measurement Noise Covariance Matrix (innovation based)
+               
+     -PY:      3d array: [Trials X Channels X Time]               
+               One-step Predictions on Y
+     -c:      self-tuning c for each k
+ 
+    ==========================================================================
+     References:
+     [1] Nilsson, M. (2006). Kalman filtering with unknown noise covariances.
+         In Reglerm�te 2006.
+     [2] Hansen, P. C. (1987). The truncated svd as a method for 
+         regularization. BIT Numerical Mathematics, 27(4), 534-553.
+
+     [3] Yan, X., & Su, X. (2009). Linear regression analysis: theory 
+     and computing. World Scientific. (section 9.1.3)
+     [4] Kaipio, J., & Somersalo, E. (2006). Statistical and computational 
+      inverse problems (Vol. 160). Springer Science & Business Media.
+    """
+    # -check input
+    
+    if len(np.shape(Y)) < 3:
+        raise Exception('Check the dimensions of Y. Y should be in the format [trials, channels, time]')
+
+    # -Preallocate main variable
+    trl,dim,tm   = Y.shape
+    AR           = np.zeros((dim,dim*p,tm))          # AR matrix
+    R            = np.zeros((dim,dim,tm))            # Estimated noise measurement
+    PY           = np.zeros(Y.shape)                 # One-step predictions
+
+    # -Initialize unknown design variables
+    xm           = np.zeros((dim*p,dim)) + 1e-4      # Prior state estimates
+    trEk         = np.zeros(tm)                      # Innovation monitoring
+    allc         = np.zeros(tm)                      # Self-tuning c, for all k
+    Cp           = np.tile(Cp,[p,1])                      # Prior matrix
+    Cp -= np.min(Cp)
+    Cp = (Cp / np.max(Cp)) * (0.1 - 1e-4) + 1e-4
+    
+    Q = []    
+    for j in range(dim):
+        Q.append(np.linalg.inv(np.diag(Cp[:,j])))
+        
+        
+    #   loop from p(lag)+1 through time
+    for k in range(p+1,tm):
+
+        # Select previous data for the matrix H        
+        data_back    = Y[:,:,k-1:k-p-1:-1]
+        H            = np.reshape(data_back,[trl,dim*p],order='F')            # see eq. (6)    
+
+        # Measurement and Innovation
+        Z            = Y[:,:,k]    # current observation      
+        PY[:,:,k]    = H @ xm
+        vk           = Z - PY[:,:,k]       # Innovation at time k
+
+        # Measurements innovation monitoring
+        tmp          = vk.T @ vk
+        R[:,:,k]     = tmp / max([trl-1,1])
+        trEk[k]      = np.trace(tmp)
+
+        H,_ = tsvd_reg(H,ff)
+        
+        # Structural priors
+        HH         = H.T@H
+        HZ         = H.T@Z
+
+        betas      =  np.array([np.linalg.pinv(HH@Q[i])@HZ[:,i] for i in range(dim)])
+         
+        
+        # self-tuning adaptation constant
+        if k > (p+1)*2:
+            ntrEk    = trEk[k-1:k-p*2:-1]
+            e_k      = np.mean(ntrEk[:p])
+            e_p      = np.mean(ntrEk[p+1:])
+            x        = abs(e_k-e_p) / e_p
+            c        = np.min([0.05 + x, 0.95])
+        else:
+            c        = 0.05
+
+        allc[k] = c
+
+        # Kalman update
+        xp         = (xm + c * betas) / (1+c)    # [1]
+        xm         = np.copy(xp)
+
+        #Collect recursive estimates
+        AR[:,:,k]    = xm.T
+
+    # -Saving output variables
+    AR           = AR.reshape([dim,dim,p,tm],order='F')
+    STOK         = Dynet_SSM(AR = AR, R = R, PY = PY, c=allc, FFthr=FFthr)
+    return STOK
+
+
+def tsvd_reg(H,ff):
+    # Regularizing H by TSVD spectral smoothing [2]
+    # SVD Tikhonov (Spectral decomposition)
+    # Economy-size decomposition of trl-by-dim H
+    u,s,vh       = np.linalg.svd(H,full_matrices=False)
+        # only the first "dim" columns of U are computed, and S is [dim,]
+        
+    relv         = s**2 / sum(s**2)
+    filtfact     = np.where(np.cumsum(relv) < ff)[0]
+    if len(filtfact)>0:
+        filtfact = filtfact[-1]
+    else:
+        filtfact = 0
+    lambda_k     = s[filtfact]**2
+
+    # diag(1./d.*((d.^2)./(d.^2+lambda_k)))
+    D = np.diag(d / (d**2 + lambda_k))
+    iD         = np.diag(1./np.diag(D))#inverse(D);
+    H          = u@iD@vh #  reconstruct H after SVD filtering
+    iH     = vh.T@D@u.t;
+
+    return H,iH
