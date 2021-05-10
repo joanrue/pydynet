@@ -273,7 +273,8 @@ def dynet_SSM_siSTOK(Y,p,C,ff=0.99):
     xm           = np.zeros((dim*p,dim)) + 1e-4      # Prior state estimates
     trEk         = np.zeros(tm)                      # Innovation monitoring
     allc         = np.zeros(tm)                      # Self-tuning c, for all k
-    Cp           = np.tile(Cp,[p,1])                      # Prior matrix
+    Cp           = np.tile(C,[p,1])                      # Prior matrix
+    FFthr        = np.zeros(tm)                      # Spectral decomposition cut-off
     Cp -= np.min(Cp)
     Cp = (Cp / np.max(Cp)) * (0.1 - 1e-4) + 1e-4
     
@@ -299,13 +300,13 @@ def dynet_SSM_siSTOK(Y,p,C,ff=0.99):
         R[:,:,k]     = tmp / max([trl-1,1])
         trEk[k]      = np.trace(tmp)
 
-        H,_ = tsvd_reg(H,ff)
-        
+        H,filtfact,_ = tsvd_reg(H,ff)
+        FFthr[k]     = filtfact
         # Structural priors
         HH         = H.T@H
         HZ         = H.T@Z
 
-        betas      =  np.array([np.linalg.pinv(HH@Q[i])@HZ[:,i] for i in range(dim)])
+        betas      =  np.array([np.linalg.pinv(HH@Q[i])@HZ[:,i] for i in range(dim)]).T
          
         
         # self-tuning adaptation constant
@@ -319,7 +320,7 @@ def dynet_SSM_siSTOK(Y,p,C,ff=0.99):
             c        = 0.05
 
         allc[k] = c
-
+       
         # Kalman update
         xp         = (xm + c * betas) / (1+c)    # [1]
         xm         = np.copy(xp)
@@ -329,8 +330,8 @@ def dynet_SSM_siSTOK(Y,p,C,ff=0.99):
 
     # -Saving output variables
     AR           = AR.reshape([dim,dim,p,tm],order='F')
-    STOK         = Dynet_SSM(AR = AR, R = R, PY = PY, c=allc, FFthr=FFthr)
-    return STOK
+    siSTOK         = Dynet_SSM(AR = AR, R = R, PY = PY, c=allc, FFthr=FFthr)
+    return siSTOK
 
 
 def tsvd_reg(H,ff):
@@ -349,9 +350,9 @@ def tsvd_reg(H,ff):
     lambda_k     = s[filtfact]**2
 
     # diag(1./d.*((d.^2)./(d.^2+lambda_k)))
-    D = np.diag(d / (d**2 + lambda_k))
+    D = np.diag(s / (s**2 + lambda_k))
     iD         = np.diag(1./np.diag(D))#inverse(D);
     H          = u@iD@vh #  reconstruct H after SVD filtering
-    iH     = vh.T@D@u.t;
+    iH     = vh.T@D@u.T;
 
-    return H,iH
+    return H,filtfact,iH
