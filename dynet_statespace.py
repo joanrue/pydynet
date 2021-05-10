@@ -196,7 +196,7 @@ def dynet_SSM_STOK(Y,p,ff):
         betas        = Hinv @ Z
         
         # self-tuning adaptation constant
-        if k > (p+1)**2: # 0.05 <= c <= 0.95
+        if k > (p+1)*2: # 0.05 <= c <= 0.95
             ntrEk    = trEk[k-1:k-p*2:-1]
             e_k      = np.mean(ntrEk[:p])
             e_p      = np.mean(ntrEk[p+1:])
